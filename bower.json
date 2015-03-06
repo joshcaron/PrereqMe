@@ -1,0 +1,21 @@
+{
+  "name": "prereqme-frontend",
+  "version": "0.0.0",
+  "description": "Frontend application for PrereqMe",
+  "main": "index.html",
+  "license": "MIT",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "angular-route": "~1.3.14",
+    "angular": "~1.3.14",
+    "angular-cookies": "~1.3.14",
+    "underscore": "~1.8.2"
+  }
+}

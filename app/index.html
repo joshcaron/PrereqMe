@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<head>
+	<meta charset="utf-8">
+	<title>PrereqMe</title>
+	<meta name="description" content="For all your scheduling needs">
+	<link rel="stylesheet" href="css/app.css">
+	<base href="/">
+</head>
+<body>
+
+	<div ng-app="prereqMe">
+			
+		<ul class="menu">
+			<li><a href="/schools">schools</a></li>
+		</ul>
+		<div ng-view></div>
+	</div>
+
+<script src="bower_components/underscore/underscore.js"></script>
+<script src="bower_components/angular/angular.js"></script>
+<script src="bower_components/angular-route/angular-route.js"></script>
+<script src="bower_components/angular-cookies/angular-cookies.js"></script>
+<script src="app.js"></script>
+<script src="services/SchoolService.js"></script>
+<script src="services/DepartmentService.js"></script>
+<script src="directives/schoolPicker.js"></script>
+<script src="controllers/home.js"></script>
+<script src="controllers/schools.js"></script>
+<script src="controllers/departments.js"></script>
+</body>
+</html>

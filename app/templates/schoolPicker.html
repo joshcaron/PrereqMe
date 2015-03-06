@@ -1,0 +1,3 @@
+<select ng-model="selected" ng-change="saveSchool(selected)" ng-options="school.name for school in list">
+	<option ng-show="allowEmpty == true" value="">-- Select a school --</option>
+</select>

@@ -1,0 +1,13 @@
+<div ng-if="selectedSchool == null">
+	<p>You need to select a school.</p>
+</div>
+
+<div ng-if="selectedSchool != null">
+	<p>You have selected {{selectedSchool.name}}</p>
+	{{selectedSchool}}
+</div>
+
+Total departments: {{departments.length}}
+<ul>
+	<li ng-repeat="dep in departments">{{dep.abbreviation}} - {{dep.name}}</li>
+</ul>
