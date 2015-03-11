@@ -20,6 +20,15 @@ prereqApp.controller('SchoolViewerController', ['$scope', '$location', '$routePa
 		DepartmentService.getDepartmentsForSchool(school)
 			.then(function(data) {
 				$scope.departments = data;
+				$scope.departments.sort(function(a, b) {
+					if (a.name > b.name) {
+						return 1;
+					} else if (a.name < b.name) {
+						return -1;
+					} else {
+						return 0;
+					}
+				});
 			}, function(error) {
 				console.error(error);
 			});
