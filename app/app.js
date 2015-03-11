@@ -20,6 +20,10 @@ prereqApp.config(['$routeProvider', '$locationProvider', function($routeProvider
 			templateUrl: 'views/schoolDepartment.html',
 			controller: 'SchoolDepartmentController'
 		})
+		.when('/schools/:school/departments/:department/courses/:course', {
+			templateUrl: 'views/course.html',
+			controller: 'CourseController'
+		})
 		.otherwise({
 			redirectTo: '/'
 		});;
