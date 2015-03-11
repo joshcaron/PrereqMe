@@ -1,15 +1,25 @@
 <div class="container">
 	<ol class="breadcrumb">
 	  <li><a ng-href="/schools/{{school.slug}}">{{school.name}}</a></li>
-	  <li class="active">{{department.abbreviation}}</li>
+	  <li class="active">{{department.name}}</li>
 	</ol>
-<!-- 	<pre>{{school | json}}</pre>
-	<pre>{{department | json}}</pre>
- -->
-	<div ng-show="!loading">
-		<h1>{{department.name}}</h1>
-		<ul>
-			<li ng-repeat="course in courses">{{course.name}}</li>
-		</ul>
+	<h1>{{department.name}}</h1>
+	<div class="row">
+		<div class="col-sm-12">
+			<div class="well">
+				<div class="form">
+					<div class="form-group">
+						<input type="text" ng-model="search" class="form-control" placeholder="Search for a class...">
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-sm-12">
+			<ul class="course-list">
+				<li ng-repeat="course in courses | filter: search"><a ng-href="/schools/{{school.slug}}/departments/{{department.abbreviation}}/courses/{{course.number}}">{{course.number}} - {{course.title}}</a></li>
+			</ul>
+		</div>
 	</div>
 </div>
