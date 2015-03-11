@@ -1,0 +1,38 @@
+<div class="container">
+	<ol class="breadcrumb">
+	  <li class="active">{{school.name}}</li>
+	</ol>
+	<h1>{{school.name}}</h1>
+	<div class="row">
+		<div class="col-sm-12">
+			<div class="well"
+				<div class="form">
+					<div class="form-group">
+						<input type="text" ng-model="search" class="form-control" placeholder="Search for a department...">
+					</div>
+					<div class="checkbox">
+						<label>
+							<input type="checkbox" ng-model="showCPS"> Show CPS		
+						</label>
+					</div>
+					<div class="checkbox">
+						<label>
+							<input type="checkbox" ng-model="showCoop"> Show Co-op		
+						</label>
+					</div>
+					<div class="checkbox">
+						<label>
+							<input type="checkbox" ng-model="showInternatl"> Show International	
+						</label>
+					</div>
+				</div>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-sm-12">
+			<ul class="department-list">
+				<li ng-repeat="department in departments | filter: customFilter"><a ng-href="/schools/{{school.slug}}/departments/{{department.abbreviation}}">{{department.name}}</a></li>
+			</ul>
+		</div>
+	</div>
+</div>

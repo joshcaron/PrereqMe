@@ -1,0 +1,15 @@
+<div class="container">
+	<ol class="breadcrumb">
+	  <li><a ng-href="/schools/{{school.slug}}">{{school.name}}</a></li>
+	  <li class="active">{{department.abbreviation}}</li>
+	</ol>
+<!-- 	<pre>{{school | json}}</pre>
+	<pre>{{department | json}}</pre>
+ -->
+	<div ng-show="!loading">
+		<h1>{{department.name}}</h1>
+		<ul>
+			<li ng-repeat="course in courses">{{course.name}}</li>
+		</ul>
+	</div>
+</div>

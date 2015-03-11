@@ -1,19 +1,14 @@
 'use strict';
 
 prereqApp.directive('schoolPicker', ['SchoolService', function(SchoolService) {
-	var setCookie = function() {
-
-	}
-
-	var link = function(scope, element, attrs) {
-		if (scope.list === undefined) {
+	var link = function(scope, element, attrs, ngModel) {
+		if (scope.schools === undefined) {
 			SchoolService.getSchoolList()
 				.then(function(data) {
-					scope.list = data;
-
+					scope.schools = data;
 					SchoolService.getSavedSchool()
 						.then(function(data) {
-							scope.selected = _.find(scope.list, function(school) {
+							scope.selected = _.find(scope.schools, function(school) {
 								return school.id == data.id;
 							});
 						}, function(error) {
@@ -25,7 +20,7 @@ prereqApp.directive('schoolPicker', ['SchoolService', function(SchoolService) {
 		} else {
 			SchoolService.getSavedSchool()
 				.then(function(data) {
-					scope.selected = _.find(scope.list, function(school) {
+					scope.selected = _.find(scope.schools, function(school) {
 						return school.id == data.id;
 					});
 				}, function(error) {
@@ -43,10 +38,8 @@ prereqApp.directive('schoolPicker', ['SchoolService', function(SchoolService) {
 		restrict: 'E',
 		templateUrl: 'templates/schoolPicker.html',
 		scope: {
-			list: '=?schools',
-			change: '=onChange',
 			selected: '=ngModel',
-			allowEmpty: '=?',
+			schools: '=?',
 			setCookie: '=?'
 		},
 		link: link

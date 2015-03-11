@@ -2,7 +2,8 @@
 
 var prereqApp = angular.module('prereqMe', [
 	'ngRoute',
-	'ngCookies'
+	'ngCookies',
+	'ui.bootstrap'
 ]);
 
 prereqApp.config(['$routeProvider', '$locationProvider', function($routeProvider, $locationProvider) {
@@ -11,14 +12,16 @@ prereqApp.config(['$routeProvider', '$locationProvider', function($routeProvider
 			templateUrl: 'views/home.html',
 			controller: 'HomeController'
 		})
-		.when('/schools', {
-			templateUrl: 'views/schools.html',
-			controller: 'SchoolsController'
-		}).when('/schools/:school/departments', {
-			templateUrl: 'views/departments.html',
-			controller: 'DepartmentsController'
-		}).otherwise({
-			redirectTo: '/schools'
+		.when('/schools/:school', {
+			templateUrl: 'views/schoolViewer.html',
+			controller: 'SchoolViewerController'
+		})
+		.when('/schools/:school/departments/:department', {
+			templateUrl: 'views/schoolDepartment.html',
+			controller: 'SchoolDepartmentController'
+		})
+		.otherwise({
+			redirectTo: '/'
 		});;
 
 	$locationProvider.html5Mode(true);

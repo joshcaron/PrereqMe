@@ -1,0 +1,13 @@
+.department-list {
+	-webkit-column-count: 3;
+	-moz-column-count: 3;
+	column-count: 3;
+
+	padding-left: 0;
+	list-style-type: none;
+	font-size: 2rem;
+}
+
+.department-list li {
+	margin-bottom: 1rem;
+}

@@ -26,6 +26,32 @@ prereqApp.factory('SchoolService', ['$http', '$cookies', '$q', '$rootScope', '$r
 			return deffered.promise;
 		},
 
+		'getSchoolBySlug': function(slug) {
+			var deffered = $q.defer();
+
+			if (this.savedSchool !== null && this.savedSchool.slug == slug) {
+				deffered.resolve(this.savedSchool);
+			} else if (this.schools.length != 0) {
+				var found = _.find(this.schools, function(school) {
+					return school.slug == slug;
+				});
+				if (found) {
+					deffered.resolve(found);
+				} else {
+					deffered.reject('School not found in cache.');
+				}
+			} else {
+				var SchoolService = this;
+				this._getSchoolBySlug(slug).then(function(response) {
+					deffered.resolve(response.data);
+				}, function (error, status) {
+					deffered.reject('Could not get school - ' + status);
+				});
+			}
+
+			return deffered.promise;
+		},
+
 		'getSavedSchool': function() {
 			// Order
 			// 1. Check cache
@@ -34,7 +60,6 @@ prereqApp.factory('SchoolService', ['$http', '$cookies', '$q', '$rootScope', '$r
 			// 4. Nothing
 
 			// Create a promise
-			console.log($routeParams);
 			var deffered = $q.defer();
 			var SchoolService = this;
 			if (this.savedSchool !== null) {
@@ -81,13 +106,14 @@ prereqApp.factory('SchoolService', ['$http', '$cookies', '$q', '$rootScope', '$r
 		},
 
 		'setSavedSchool': function(school, cookie) {
-			this.savedSchool = school;
-			if (school === null) {
-				console.log('Cleared saved school.');
-				this._deleteSchoolCookie();
-			} else if (cookie && ($cookies[$rootScope.constants.SAVED_SCHOOL_COOKIE] != school.id)) {
-				this._setSchoolCookie(school.slug);
+			if (school !== null && school !== undefined) {
+				this.savedSchool = school;
+				console.log("Setting saved school as " + school.name);
+				if (cookie && ($cookies[$rootScope.constants.SAVED_SCHOOL_COOKIE] != school.id)) {
+					this._setSchoolCookie(school.slug);
+				}
 			}
+			
 			
 		},
 

@@ -24,6 +24,32 @@ prereqApp.factory('DepartmentService', ['$http', '$cookies', '$q', '$rootScope',
 			return deffered.promise;
 		},
 
+		'getDepartment': function(school, department) {
+			var deffered = $q.defer();
+
+			if (this.stored[school.slug] !== undefined) {
+				console.log("Loading department from cache.");
+				var found = _.find(this.stored[school.slug], function(dept) {
+					return dept.abbreviation == department;
+				});
+				if (found) {
+					deffered.resolve(found);
+				} else {
+					deffered.reject("Bad cache.");
+				}
+			} else {
+				this._getDepartmentByAbbv(school.slug, department)
+					.then(function(response) {
+						console.log("Got department from API");
+						deffered.resolve(response.data);
+					}, function(error) {
+						deffered.reject('Failed to get department: ' + error.status);
+					});
+			}
+
+			return deffered.promise;
+		},
+
 		'_getDepartmentList': function(slug) {
 			console.log("Getting departments");
 			return $http.get($rootScope.constants.API_BASE_URL + '/schools/' + slug + '/departments');

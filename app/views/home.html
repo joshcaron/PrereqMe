@@ -1,3 +1,13 @@
-<school-picker ng-model="school" set-cookie="true" allow-empty="true"></school-picker>
-
-{{school}}
+<div class="jumbotron">
+	<div class="container">
+		<h1>Welcome to PrereqMe!</h1>
+		<p>Use this site to find all the prerequisites for courses at your school.</p>
+		<alert ng-repeat="alert in alerts" type="{{alert.type}}" close="closeAlert($index)">{{alert.msg}}</alert>
+		<form class="form-horizontal">
+			<school-picker class="col-sm-10" style="padding:0"ng-model="school"></school-picker>
+			<div class="col-sm-1">
+				<button type="submit" ng-click="goTo(school)" class="btn btn-lg btn-primary">Search</button>				
+			</div>
+		</form>
+	</div>
+</div>
