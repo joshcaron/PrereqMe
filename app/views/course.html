@@ -8,10 +8,10 @@
 	<p class="description">{{course.description}}</p>
 	<h2>Prerequisites</h3>
 	<p ng-if="course.prereqs.length === 0">There are no prerequisites for this course!</p>
-	<p ng-if="course.prereqs.length > 0">This course has the following prerequisites: <span ng-repeat="ands in course.prereqs"><span ng-repeat="ors in ands"><a ng-href="/schools/{{school.slug}}/departments/{{ors.abbreviation}}/courses/{{ors.number}}">{{ors.abbreviation}} {{ors.number}}</a><span ng-if="!$last"> or </span></span><span ng-if="!$last">, and </span></span>.</p>
+	<p ng-if="course.prereqs.length > 0">This course has the following prerequisites: <span ng-repeat="ands in course.prereqs"><span ng-repeat="ors in ands"><a title="{{ors.title}}" ng-href="/schools/{{school.slug}}/departments/{{ors.abbreviation}}/courses/{{ors.number}}">{{ors.abbreviation}} {{ors.number}}</a><span ng-if="!$last"> or </span></span><span ng-if="!$last">, and </span></span>.</p>
 	<h2>Dependents</h2>
 	<p ng-if="course.dependents.length === 0">This course is not a prerequisite for any other course.</p>
-	<p ng-if="course.dependents.length > 0">This is courses is listed as a prerequisite for: <span ng-repeat="d in course.dependents"><span ng-if="$last"> and </span><a ng-href="/schools/{{school.slug}}/departments/{{d.abbreviation}}/courses/{{d.number}}">{{d.abbreviation}} {{d.number}}</a><span ng-if="!$last">, </span></span>.</p>
+	<p ng-if="course.dependents.length > 0">This is courses is listed as a prerequisite for: <span ng-repeat="d in course.dependents"><span ng-if="$last"></span><a title="{{d.title}}" ng-href="/schools/{{school.slug}}/departments/{{d.abbreviation}}/courses/{{d.number}}">{{d.abbreviation}} {{d.number}}</a><span ng-if="!$last">, </span></span>.</p>
 	<div class="row">
 		<div class="col-sm-12">
 			<!-- <pre>
