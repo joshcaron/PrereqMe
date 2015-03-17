@@ -30,7 +30,7 @@ DEFAULT_COURSES_PARAMS = {
     "sel_divs": "dummy", 
     "sel_schd": "dummy", 
     "sel_attr": "dummy", 
-    "term_in": "201410", 
+    "term_in": "201530",
     "sel_coll": "dummy", 
     "sel_dept": "", 
     "sel_crse_end": "", 
@@ -74,28 +74,6 @@ def elems_to_content(elems):
     """
     return [elem.text_content() for elem in elems]
 
-def parse_hours(text):
-    """
-        Parses a course hours or lecture hours string into a dict
-    """
-    parts = text.split()
-    if len(parts) == 1:
-        return {
-            'type': 'single',
-            'value': float(parts[0])
-        }
-    elif len(parts) == 3 and parts[1] == 'TO':
-        return {
-            'type': 'range',
-            'min': float(parts[0]),
-            'max': float(parts[2])
-        }
-    elif len(parts) == 3 and parts[1] == 'OR':
-        return {
-            'type': 'options',
-            'options': [float(parts[0]), float(parts[2])]
-        }
-
 def iter_child_textnodes(elem, strip_whitespace=False, remove_empty=False):
     """
         Returns a generator which produces a list of the text contents of direct
@@ -119,39 +97,108 @@ def splitstrip(text, separator):
     """
     return [t.strip() for t in text.split(separator) if t.strip()]
 
+def parse_hours(text):
+    hours = {}
+
+    if "TO" in text:
+        # range
+        # TODO: Move to constant
+        to_re = re.compile('([0-9]+\.[0-9]{3} TO +[0-9]+\.[0-9]{3})(.*)')
+        groups = to_re.match(text).groups()
+        hmin, hmax = [c.strip() for c in groups[0].split("TO")]
+        hours['valueType'] = 'range'
+        hours['min'] = hmin
+        hours['max'] = hmax
+        hours['hourType'] = groups[1].strip()
+    elif "OR" in text:
+        # options
+        # TODO: Move to constant
+        or_re = re.compile('([0-9]+\.[0-9]{3} OR +[0-9]+\.[0-9]{3})(.*)')
+        groups = or_re.match(text).groups()
+        options = [c.strip() for c in groups[0].split("OR")]
+        hours['valueType'] = 'options'
+        hours['options'] = options
+        hours['hourType'] = groups[1].strip()
+    else:
+        # single
+        # TODO: Move to constant
+        spaces = re.compile(' +')
+        split = spaces.split(text, 1)
+        count = float(split[0])
+        hour_type = split[1].strip()
+        hours['valueType'] = 'single'
+        hours['value'] = count
+        hours['hourType'] = hour_type
+
+    return hours
+
 def parse_description(description):
-    """
-        Parses a description element into a dictionary
-    """
     info = {}
+    pieces = [a.strip() for a in description.itertext() if a.strip() != '']
+
+    preNumbers = []
+    numbers = []
+    postNumbers = []
+    foundNumbers = False
+    # TODO: Move to constant
+    double_re = re.compile("([0-9]+\.[0-9]{3})")
+    for p in pieces:
+        matched = double_re.match(p.strip())
+        stripped = p.strip()
+        if foundNumbers:
+            if matched != None:
+                numbers.append(stripped)
+            else:
+                postNumbers.append(stripped)
+        elif matched != None:
+            foundNumbers = True
+            numbers.append(stripped)
+        else:
+            preNumbers.append(stripped)
+
+    desc = " ".join(preNumbers)
+    hasPrereq = 'Prereq.' in desc
+    hasCoreq = 'Coreq.' in desc
+    if hasPrereq and hasCoreq:
+        desc_pieces = [r.strip() for r in desc.split('Prereq.') if r.strip() != '']
+        info['description'] = desc_pieces[0]
+        reqs = [r.strip() for r in desc_pieces[1].split('Coreq.') if r.strip() != '']
+        info['prereq'] = reqs[0]
+        info['coreq'] = reqs[1]
+    elif hasPrereq:
+        desc_pieces = [r.strip() for r in desc.split('Prereq.') if r.strip() != '']
+        info['description'] = desc_pieces[0]
+        info['prereq'] = desc_pieces[1]
+        info['coreq'] = None
+    elif hasCoreq:
+        desc_pieces = [r.strip() for r in desc.split('Coreq.') if r.strip() != '']
+        info['description'] = desc_pieces[0]
+        info['prereq'] = None
+        info['coreq'] = desc_pieces[1]
+    else:
+        info['description'] = desc
+        info['prereq'] = None
+        info['coreq'] = None
+
+    hours = []
+    for nums in numbers:
+        hours.append(parse_hours(nums))
+    info['hours'] = hours
+
+    info['levels'] = [l.strip() for l in postNumbers[1].split(",")]
+    info['schedules'] = [s.strip() for s in postNumbers[3].split(",")]
+    info['department'] = postNumbers[4]
+    # Some courses don't have attributes!??!
     try:
-        info['prereqstr'] = description.cssselect('i')[0].text_content()
+        comma_attributes = [
+            'UG Col of Arts, Media & Design',
+            'GS Col of Arts, Media & Design'
+        ]
+        attrs = postNumbers[6]
+        info['attributes'] = re.findall("(" + "|".join(comma_attributes) + "|(?:\w+[\s|,])+)", attrs)
     except IndexError:
-        info['prereqstr'] = None
-    text_parts_iter = iter_child_textnodes(description, True, True)
-    # Get the actual description string. (Ends before line with credit hours)
-    desc_parts = []
-    for part in text_parts_iter:
-        if 'Credit hours' in part:
-            break
-        desc_parts.append(part)
-    info['description'] = ' '.join(desc_parts)
-    # Extract the credit and lecture hours
-    for part in text_parts_iter:
-        part = part.strip()
-        if 'Credit hours' in part:
-            info['creditHours'] = parse_hours(part.partition('Credit')[0])
-        elif 'Lecture hours' in part:
-            info['lectureHours'] = parse_hours(part.partition('Lecture')[0])
-    # Get the fieldlabeltext labled parameters using DOM siblings
-    for elem in description.cssselect('.fieldlabeltext'):
-        elemtext = elem.text.strip()
-        if elemtext == 'Levels:':
-            info['levels'] = splitstrip(elem.tail, ',')
-        elif elemtext == 'Schedule Types:':        
-            info['scheduleTypes'] = splitstrip(elem.getnext().text or '', ',')
-        elif elemtext == 'Course Attributes:':
-            info['attributes'] = splitstrip(elem.getnext().tail, ',')
+        info['attributes'] = []
+
     return info
 
 def get_course_info(dept):
