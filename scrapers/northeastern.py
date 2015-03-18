@@ -97,45 +97,46 @@ def splitstrip(text, separator):
     """
     return [t.strip() for t in text.split(separator) if t.strip()]
 
-def parse_hours(text):
-    hours = {}
+def parse_hours(numbers):
 
-    if "TO" in text:
-        # range
-        # TODO: Move to constant
-        to_re = re.compile('([0-9]+\.[0-9]{3} TO +[0-9]+\.[0-9]{3})(.*)')
-        groups = to_re.match(text).groups()
-        hmin, hmax = [c.strip() for c in groups[0].split("TO")]
-        hours['valueType'] = 'range'
-        hours['min'] = hmin
-        hours['max'] = hmax
-        hours['hourType'] = groups[1].strip()
-    elif "OR" in text:
-        # options
-        # TODO: Move to constant
-        or_re = re.compile('([0-9]+\.[0-9]{3} OR +[0-9]+\.[0-9]{3})(.*)')
-        groups = or_re.match(text).groups()
-        options = [c.strip() for c in groups[0].split("OR")]
-        hours['valueType'] = 'options'
-        hours['options'] = options
-        hours['hourType'] = groups[1].strip()
-    else:
-        # single
-        # TODO: Move to constant
-        spaces = re.compile(' +')
-        split = spaces.split(text, 1)
-        count = float(split[0])
-        hour_type = split[1].strip()
-        hours['valueType'] = 'single'
-        hours['value'] = count
-        hours['hourType'] = hour_type
+    all_hours = []
+    for text in numbers:
+        hours = {}
 
-    return hours
+        if "TO" in text:
+            # range
+            # TODO: Move to constant
+            to_re = re.compile('([0-9]+\.[0-9]{3} TO +[0-9]+\.[0-9]{3})(.*)')
+            groups = to_re.match(text).groups()
+            hmin, hmax = [c.strip() for c in groups[0].split("TO")]
+            hours['valueType'] = 'range'
+            hours['min'] = hmin
+            hours['max'] = hmax
+            hours['hourType'] = groups[1].strip()
+        elif "OR" in text:
+            # options
+            # TODO: Move to constant
+            or_re = re.compile('([0-9]+\.[0-9]{3} OR +[0-9]+\.[0-9]{3})(.*)')
+            groups = or_re.match(text).groups()
+            options = [c.strip() for c in groups[0].split("OR")]
+            hours['valueType'] = 'options'
+            hours['options'] = options
+            hours['hourType'] = groups[1].strip()
+        else:
+            # single
+            # TODO: Move to constant
+            spaces = re.compile(' +')
+            split = spaces.split(text, 1)
+            count = float(split[0])
+            hour_type = split[1].strip()
+            hours['valueType'] = 'single'
+            hours['value'] = count
+            hours['hourType'] = hour_type
+        all_hours.append(hours)
 
-def parse_description(description):
-    info = {}
-    pieces = [a.strip() for a in description.itertext() if a.strip() != '']
+    return all_hours
 
+def organize_pieces(pieces):
     preNumbers = []
     numbers = []
     postNumbers = []
@@ -156,38 +157,48 @@ def parse_description(description):
         else:
             preNumbers.append(stripped)
 
-    desc = " ".join(preNumbers)
+    return (preNumbers, numbers, postNumbers)
+
+def split_requisites(description_pieces):
+    desc = " ".join(description_pieces)
     hasPrereq = 'Prereq.' in desc
     hasCoreq = 'Coreq.' in desc
+    description = ''
+    prereq_str = ''
+    coreq_str = ''
+
     if hasPrereq and hasCoreq:
         desc_pieces = [r.strip() for r in desc.split('Prereq.') if r.strip() != '']
-        info['description'] = desc_pieces[0]
+        description = desc_pieces[0]
         reqs = [r.strip() for r in desc_pieces[1].split('Coreq.') if r.strip() != '']
-        info['prereq'] = reqs[0]
-        info['coreq'] = reqs[1]
+        prereq_str = reqs[0]
+        coreq_str = reqs[1]
     elif hasPrereq:
         desc_pieces = [r.strip() for r in desc.split('Prereq.') if r.strip() != '']
-        info['description'] = desc_pieces[0]
-        info['prereq'] = desc_pieces[1]
-        info['coreq'] = None
+        description = desc_pieces[0]
+        prereq_str = desc_pieces[1]
+        coreq_str = ''
     elif hasCoreq:
         desc_pieces = [r.strip() for r in desc.split('Coreq.') if r.strip() != '']
-        info['description'] = desc_pieces[0]
-        info['prereq'] = None
-        info['coreq'] = desc_pieces[1]
+        description = desc_pieces[0]
+        prereq_str = ''
+        coreq_str = desc_pieces[1]
     else:
-        info['description'] = desc
-        info['prereq'] = None
-        info['coreq'] = None
+        description = desc
+        prereq_str = ''
+        coreq_str = ''
 
-    hours = []
-    for nums in numbers:
-        hours.append(parse_hours(nums))
-    info['hours'] = hours
+    return (description, prereq_str, coreq_str)
 
-    info['levels'] = [l.strip() for l in postNumbers[1].split(",")]
-    info['schedules'] = [s.strip() for s in postNumbers[3].split(",")]
-    info['department'] = postNumbers[4]
+def after_hours(postNumbers):
+    levels = []
+    schedules = []
+    department = ''
+    attributes = []
+
+    levels = [l.strip() for l in postNumbers[1].split(",")]
+    schedules = [s.strip() for s in postNumbers[3].split(",")]
+    department = postNumbers[4]
     # Some courses don't have attributes!??!
     try:
         comma_attributes = [
@@ -195,9 +206,97 @@ def parse_description(description):
             'GS Col of Arts, Media & Design'
         ]
         attrs = postNumbers[6]
-        info['attributes'] = re.findall("(" + "|".join(comma_attributes) + "|(?:\w+[\s|,])+)", attrs)
+        attr_regex = "(" + "|".join(comma_attributes) + "|(?:[\w\s-])+)"
+        attributes = [a.strip() for a in re.findall(attr_regex, attrs)]
     except IndexError:
-        info['attributes'] = []
+        pass
+
+    return (levels, schedules, department, attributes)
+
+def make_prereq_course(course_str, concurrent=False):
+    pieces = course_str.split(" ")
+    course = {
+        "department": pieces[0],
+        "number": pieces[1],
+        "concurrent": concurrent
+    }
+    return course
+
+def make_coreq_course(course_str):
+    pieces = course_str.split(" ")
+    course = {
+        "department": pieces[0],
+        "number": pieces[1]
+    }
+    return course
+
+def parse_prereqs(prereq_str):
+    prereqs = []
+    pieces = [p.strip() for p in prereq_str.split(";")]
+    # TODO: store in constant
+    course_re = re.compile("(\w+ \d+)")
+    try:
+        has_course = course_re.search(pieces[0])
+        if has_course:
+            # extract all courses
+            if "(a)" in pieces[0]:
+                # Ands and Ors, oh dear god why
+                ands = pieces[0].split("and")
+                for a in ands:
+                    ors = [make_prereq_course(o) for o in course_re.findall(a)]
+                    prereqs.append(ors)
+            elif " or " in pieces[0]:
+                # ors
+                ors = [make_prereq_course(o) for o in course_re.findall(pieces[0])]
+                prereqs.append(ors)
+            elif " and " in pieces[0]:
+                ands = [[make_prereq_course(a)] for a in course_re.findall(pieces[0])]
+                for a in ands:
+                    prereqs.append(a)
+            elif "concurrently" in pieces[0]:
+                prereqs.append([make_prereq_course(pieces[0], True)])
+            else:
+                prereqs.append([make_prereq_course(pieces[0])])
+            # any more data?
+            prereqs.append([pieces[1]])
+        else:
+            # No course information, just text
+            if prereq_str != '':
+                prereqs.append([pieces[0]])
+    except IndexError:
+        pass
+
+    return prereqs
+
+def parse_coreqs(coreq_str):
+    coreqs = []
+    # TODO: store in constant
+    course_re = re.compile("(\w+ \d+)")
+    try:
+        coreqs = [make_coreq_course(a) for a in course_re.findall(coreq_str)]
+    except IndexError:
+        pass
+
+    return coreqs
+
+def parse_description(description):
+    info = {}
+    pieces = [a.strip() for a in description.itertext() if a.strip() != '']
+    preNumbers, numbers, postNumbers = organize_pieces(pieces)
+
+    description, prereq, coreq = split_requisites(preNumbers)
+    info['description'] = description
+    info['prerequisites'] = parse_prereqs(prereq)
+    info['corequisites'] = parse_coreqs(coreq)
+
+    hours = parse_hours(numbers)
+    info['hours'] = hours
+
+    levels, schedules, department, attributes = after_hours(postNumbers)
+    info['levels'] = levels
+    info['schedules'] = schedules
+    info['department'] = department
+    info['attributes'] = attributes
 
     return info
 
@@ -228,7 +327,7 @@ def get_course_info_by_dept(depts, threadcount=10):
     dlock = threading.Lock()
     output = {
         "school": "Northeastern University",
-        "slug": "NEU",
+        "slug": "Northeastern",
         "location": {
             "street": "360 Huntington Ave",
             "city": "Boston",
