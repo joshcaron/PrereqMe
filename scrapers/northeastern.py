@@ -216,9 +216,12 @@ def get_course_info(dept):
     return course_array
 
 def parse_description(description):
+    """
+        Takes a course description and returns a dictionary of all the various
+        pieces of information that can be extracted from it
+    """
     info = {}
-    pieces = [a.strip() for a in description.itertext() if a.strip() != '']
-    preNumbers, numbers, postNumbers = organize_pieces(pieces)
+    preNumbers, numbers, postNumbers = get_pieces(description)
 
     description, prereq, coreq = split_requisites(preNumbers)
     info['description'] = description
@@ -237,7 +240,15 @@ def parse_description(description):
 
     return info
 
-def organize_pieces(pieces):
+def get_pieces(description):
+    """
+        Takes a description of a course and returns a tuple of the various
+        pieces organized as follows:
+            - Before the course hours
+            - The course hours
+            - After the course hours
+    """
+    pieces = [a.strip() for a in description.itertext() if a.strip() != '']
     preNumbers = []
     numbers = []
     postNumbers = []
