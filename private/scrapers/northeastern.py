@@ -15,8 +15,8 @@ import urllib2
 
 import lxml.html
 
-
-# Compiled Regexs
+####################################
+# Compiled Regexs                  #
 ####################################
 
 # Extract course number and title
@@ -44,6 +44,10 @@ ATTRIBUTES_REGEX = re.compile("(" + "|".join(COMMA_ATTRIBUTES) + "|(?:[\w\s-])+)
 # Matches a department string followed by a course number
 COURSES_REGEX = re.compile('(\w+ \d+)')
 
+####################################
+# URLs and Parameter data          #
+####################################
+
 # Base URL for the course display page
 DISPLAY_COURSES_URL = 'https://wl11gp.neu.edu/udcprod8/bwckctlg.p_display_courses?'
 # Default parameters for the course display page
@@ -62,6 +66,78 @@ DEFAULT_COURSES_PARAMS = {
     "sel_crse_end": "", 
     "sel_title": ""
 }
+
+####################################
+# Main                             #
+####################################
+
+def main():
+    """
+        Writes all course information to all_courses.json
+    """
+    dept_dict = get_course_info_by_dept(get_departments())
+    with open('../schools/northeastern.json', 'w') as fobj:
+        json.dump(dept_dict, fobj, indent=4, sort_keys=True)
+
+
+def get_course_info_by_dept(depts, threadcount=10):
+    """
+        Gets a dictionary mapping departments to their course information
+    """
+    # Lock for department queue
+    dlock = threading.Lock()
+    output = {
+        "school": "Northeastern University",
+        "slug": "Northeastern",
+        "location": {
+            "street": "360 Huntington Ave",
+            "city": "Boston",
+            "state": "MA",
+            "country": "USA",
+        },
+        "website": "http://www.northeastern.edu/",
+        "departments": []
+    }
+    depts = itertools.tee(depts, 1)[0]
+    errors = []
+    def threadfunc():
+        """
+            Runs inside of the threads. Gets information for departments in
+            a loop and returns when no deparments remain in the queue
+        """
+        while True:
+            try:
+                dlock.acquire()
+                try:
+                    dept = depts.next()
+                    print 'Getting: %s' % dept['name']
+                except StopIteration:
+                    return
+                finally:
+                    dlock.release()
+                info = get_course_info(dept['abbreviation'])
+                data = {
+                    "name": dept['name'],
+                    "abbreviation": dept['abbreviation'],
+                    "courses": info
+                }
+                output['departments'].append(data)
+            except Exception, err:
+                errors.append((err, traceback.format_exc()))
+                return
+    threads = [threading.Thread(target=threadfunc) for i in xrange(threadcount)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    if errors:
+        errstr = '\n'.join('%s\n%s' % pair for pair in errors)
+        raise Exception('Errors occurred fetching data:\n%s' % errstr)
+    return output
+
+####################################
+# DOM Parsing                      #
+####################################
 
 def get_dom(url, data=None):
     """
@@ -122,6 +198,10 @@ def splitstrip(text, separator):
         strings and only outputs non-empty strings.
     """
     return [t.strip() for t in text.split(separator) if t.strip()]
+
+####################################
+# Course Information Parsing       #
+####################################
 
 def parse_hours(numbers):
 
@@ -330,68 +410,7 @@ def get_course_info(dept):
         course_array.append(info)
     return course_array
 
-def get_course_info_by_dept(depts, threadcount=10):
-    """
-        Gets a dictionary mapping departments to their course information
-    """
-    # Lock for department queue
-    dlock = threading.Lock()
-    output = {
-        "school": "Northeastern University",
-        "slug": "Northeastern",
-        "location": {
-            "street": "360 Huntington Ave",
-            "city": "Boston",
-            "state": "MA",
-            "country": "USA",
-        },
-        "website": "http://www.northeastern.edu/",
-        "departments": []
-    }
-    depts = itertools.tee(depts, 1)[0]
-    errors = []
-    def threadfunc():
-        """
-            Runs inside of the threads. Gets information for departments in
-            a loop and returns when no deparments remain in the queue
-        """
-        while True:
-            try:
-                dlock.acquire()
-                try:
-                    dept = depts.next()
-                    print 'Getting: %s' % dept['name']
-                except StopIteration:
-                    return
-                finally:
-                    dlock.release()
-                info = get_course_info(dept['abbreviation'])
-                data = {
-                    "name": dept['name'],
-                    "abbreviation": dept['abbreviation'],
-                    "courses": info
-                }
-                output['departments'].append(data)
-            except Exception, err:
-                errors.append((err, traceback.format_exc()))
-                return
-    threads = [threading.Thread(target=threadfunc) for i in xrange(threadcount)]
-    for thread in threads:
-        thread.start()
-    for thread in threads:
-        thread.join()
-    if errors:
-        errstr = '\n'.join('%s\n%s' % pair for pair in errors)
-        raise Exception('Errors occurred fetching data:\n%s' % errstr)
-    return output
 
-def main():
-    """
-        Writes all course information to all_courses.json
-    """
-    dept_dict = get_course_info_by_dept(get_departments())
-    with open('../schools/northeastern.json', 'w') as fobj:
-        json.dump(dept_dict, fobj, indent=4, sort_keys=True)
 
 if __name__ == '__main__':
     main()
