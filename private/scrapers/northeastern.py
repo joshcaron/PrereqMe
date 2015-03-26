@@ -16,8 +16,34 @@ import urllib2
 import lxml.html
 
 
-# Regex for extracting course number from title
+# Compiled Regexs
+####################################
+
+# Extract course number and title
 TITLE_INFO_REGEX = re.compile('[\sa-zA-Z]+(\d+)\s?-\s?(.*)')
+
+# Extract hour range
+HOURS_TO_REGEX = re.compile('([0-9]+\.[0-9]{3} TO +[0-9]+\.[0-9]{3})(.*)')
+
+# Extract hour options
+HOURS_OR_REGEX = re.compile('([0-9]+\.[0-9]{3} OR +[0-9]+\.[0-9]{3})(.*)')
+
+# Match one or more spaces
+SPACES_REGEX = re.compile(' +')
+
+# Matches a floating point number that has 3 decimal places
+DOUBLE_REGEX = re.compile("([0-9]+\.[0-9]{3})")
+
+# Known attributes that have commas in them
+COMMA_ATTRIBUTES = [
+    'UG Col of Arts, Media & Design',
+    'GS Col of Arts, Media & Design'
+]
+ATTRIBUTES_REGEX = re.compile("(" + "|".join(COMMA_ATTRIBUTES) + "|(?:[\w\s-])+)")
+
+# Matches a department string followed by a course number
+COURSES_REGEX = re.compile('(\w+ \d+)')
+
 # Base URL for the course display page
 DISPLAY_COURSES_URL = 'https://wl11gp.neu.edu/udcprod8/bwckctlg.p_display_courses?'
 # Default parameters for the course display page
@@ -105,9 +131,7 @@ def parse_hours(numbers):
 
         if "TO" in text:
             # range
-            # TODO: Move to constant
-            to_re = re.compile('([0-9]+\.[0-9]{3} TO +[0-9]+\.[0-9]{3})(.*)')
-            groups = to_re.match(text).groups()
+            groups = HOURS_TO_REGEX.match(text).groups()
             hmin, hmax = [c.strip() for c in groups[0].split("TO")]
             hours['valueType'] = 'range'
             hours['min'] = hmin
@@ -115,9 +139,7 @@ def parse_hours(numbers):
             hours['hourType'] = groups[1].strip()
         elif "OR" in text:
             # options
-            # TODO: Move to constant
-            or_re = re.compile('([0-9]+\.[0-9]{3} OR +[0-9]+\.[0-9]{3})(.*)')
-            groups = or_re.match(text).groups()
+            groups = HOURS_OR_REGEX.match(text).groups()
             options = [c.strip() for c in groups[0].split("OR")]
             hours['valueType'] = 'options'
             hours['options'] = options
@@ -125,8 +147,7 @@ def parse_hours(numbers):
         else:
             # single
             # TODO: Move to constant
-            spaces = re.compile(' +')
-            split = spaces.split(text, 1)
+            split = SPACES_REGEX.split(text, 1)
             count = float(split[0])
             hour_type = split[1].strip()
             hours['valueType'] = 'single'
@@ -141,10 +162,8 @@ def organize_pieces(pieces):
     numbers = []
     postNumbers = []
     foundNumbers = False
-    # TODO: Move to constant
-    double_re = re.compile("([0-9]+\.[0-9]{3})")
     for p in pieces:
-        matched = double_re.match(p.strip())
+        matched = DOUBLE_REGEX.match(p.strip())
         stripped = p.strip()
         if foundNumbers:
             if matched != None:
@@ -201,13 +220,8 @@ def after_hours(postNumbers):
     department = postNumbers[4]
     # Some courses don't have attributes!??!
     try:
-        comma_attributes = [
-            'UG Col of Arts, Media & Design',
-            'GS Col of Arts, Media & Design'
-        ]
         attrs = postNumbers[6]
-        attr_regex = "(" + "|".join(comma_attributes) + "|(?:[\w\s-])+)"
-        attributes = [a.strip() for a in re.findall(attr_regex, attrs)]
+        attributes = [a.strip() for a in ATTRIBUTES_REGEX.findall(attrs)]
     except IndexError:
         pass
 
@@ -233,24 +247,22 @@ def make_coreq_course(course_str):
 def parse_prereqs(prereq_str):
     prereqs = []
     pieces = [p.strip() for p in prereq_str.split(";")]
-    # TODO: store in constant
-    course_re = re.compile("(\w+ \d+)")
     try:
-        has_course = course_re.search(pieces[0])
+        has_course = COURSES_REGEX.search(pieces[0])
         if has_course:
             # extract all courses
             if "(a)" in pieces[0]:
                 # Ands and Ors, oh dear god why
                 ands = pieces[0].split("and")
                 for a in ands:
-                    ors = [make_prereq_course(o) for o in course_re.findall(a)]
+                    ors = [make_prereq_course(o) for o in COURSES_REGEX.findall(a)]
                     prereqs.append(ors)
             elif " or " in pieces[0]:
                 # ors
-                ors = [make_prereq_course(o) for o in course_re.findall(pieces[0])]
+                ors = [make_prereq_course(o) for o in COURSES_REGEX.findall(pieces[0])]
                 prereqs.append(ors)
             elif " and " in pieces[0]:
-                ands = [[make_prereq_course(a)] for a in course_re.findall(pieces[0])]
+                ands = [[make_prereq_course(a)] for a in COURSES_REGEX.findall(pieces[0])]
                 for a in ands:
                     prereqs.append(a)
             elif "concurrently" in pieces[0]:
@@ -270,10 +282,8 @@ def parse_prereqs(prereq_str):
 
 def parse_coreqs(coreq_str):
     coreqs = []
-    # TODO: store in constant
-    course_re = re.compile("(\w+ \d+)")
     try:
-        coreqs = [make_coreq_course(a) for a in course_re.findall(coreq_str)]
+        coreqs = [make_coreq_course(a) for a in COURSES_REGEX.findall(coreq_str)]
     except IndexError:
         pass
 
