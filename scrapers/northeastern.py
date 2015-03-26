@@ -1,11 +1,10 @@
 #! /usr/bin/python
 """
-    Scrapes NEU course information.
+    Scrapes Northeastern University course information.
 """
 
 import json
 import itertools
-import os
 import re
 import threading
 import traceback
@@ -14,7 +13,7 @@ import urllib2
 import lxml.html
 
 ####################################
-# Compiled Regexs                  #
+# Compiled Regexes                 #
 ####################################
 
 # Extract course number and title
@@ -50,24 +49,43 @@ COURSES_REGEX = re.compile(r'(\w+ \d+)')
 # URL used for getting the available semesters
 SEMESTER_OPTIONS_URL = 'https://wl11gp.neu.edu/udcprod8/bwckctlg.p_disp_dyn_ctlg'
 
-# Base URL for the course display page
-DISPLAY_COURSES_URL = 'https://wl11gp.neu.edu/udcprod8/bwckctlg.p_display_courses?'
+# URL used for getting all the department options
+DEPARTMENT_OPTIONS_URL = 'https://wl11gp.neu.edu/udcprod8/bwckctlg.p_disp_cat_term_date'
 
-# Default parameters for the course display page
-DEFAULT_COURSES_PARAMS = {
-    "sel_levl": "dummy",
-    "call_proc_in": "",
-    "sel_to_cred": "",
-    "sel_crse_strt": "",
-    "sel_from_cred": "",
-    "sel_divs": "dummy",
-    "sel_schd": "dummy",
-    "sel_attr": "dummy",
-    "term_in": "201530",
-    "sel_coll": "dummy",
+# Required parameters for getting departments
+DEPARTMENT_OPTIONS_PARAMS = {
+    "call_proc_in": "bwckctlg.p_disp_dyn_ctlg",
+    "cat_term_in": None
+}
+
+# URL used for the course listing for a department
+COURSES_URL = 'https://wl11gp.neu.edu/udcprod8/bwckctlg.p_display_courses'
+
+# Required parameters for the course listing page
+REQUIRED_COURSES_PARAMS = {
+    "sel_subj": "",
+    "sel_levl": "",
+    "sel_schd": "",
+    "sel_coll": "",
+    "sel_divs": "",
     "sel_dept": "",
-    "sel_crse_end": "",
-    "sel_title": ""
+    "sel_attr": ""
+}
+
+####################################
+# Northeastern Information         #
+####################################
+
+NORTHEASTERN_INFO = {
+    "school": "Northeastern University",
+    "slug": "Northeastern",
+    "location": {
+        "street": "360 Huntington Ave",
+        "city": "Boston",
+        "state": "MA",
+        "country": "USA",
+    },
+    "website": "http://www.northeastern.edu/",
 }
 
 
@@ -77,68 +95,22 @@ DEFAULT_COURSES_PARAMS = {
 
 def main():
     """
-        Writes all course information to all_courses.json
+        After selecting a semester and department, gather all the course
+        information and save it as json
     """
-    dept_dict = get_course_info_by_dept(get_departments())
-    with open('../schools/northeastern.json', 'w') as fobj:
-        json.dump(dept_dict, fobj, indent=4, sort_keys=True)
+    print "Getting available semesters:"
+    semester = get_semester_choice()
+    print "\nGetting departments for %s:" % semester["name"]
 
+    departments = get_department_choices(semester["value"])
+    fetched = thread_departments(departments, semester["value"])
 
-def get_course_info_by_dept(depts, threadcount=10):
-    """
-        Gets a dictionary mapping departments to their course information
-    """
-    # Lock for department queue
-    dlock = threading.Lock()
-    output = {
-        "school": "Northeastern University",
-        "slug": "Northeastern",
-        "location": {
-            "street": "360 Huntington Ave",
-            "city": "Boston",
-            "state": "MA",
-            "country": "USA",
-        },
-        "website": "http://www.northeastern.edu/",
-        "departments": []
-    }
-    depts = itertools.tee(depts, 1)[0]
-    errors = []
+    northeastern = NORTHEASTERN_INFO.copy()
+    northeastern["departments"] = fetched
 
-    def threadfunc():
-        """
-            Runs inside of the threads. Gets information for departments in
-            a loop and returns when no deparments remain in the queue
-        """
-        while True:
-            try:
-                dlock.acquire()
-                try:
-                    dept = depts.next()
-                    print 'Getting: %s' % dept['name']
-                except StopIteration:
-                    return
-                finally:
-                    dlock.release()
-                info = get_course_info(dept['abbreviation'])
-                data = {
-                    "name": dept['name'],
-                    "abbreviation": dept['abbreviation'],
-                    "courses": info
-                }
-                output['departments'].append(data)
-            except Exception, err:
-                errors.append((err, traceback.format_exc()))
-                return
-    threads = [threading.Thread(target=threadfunc) for i in xrange(threadcount)]
-    for thread in threads:
-        thread.start()
-    for thread in threads:
-        thread.join()
-    if errors:
-        errstr = '\n'.join('%s\n%s' % pair for pair in errors)
-        raise Exception('Errors occurred fetching data:\n%s' % errstr)
-    return output
+    path = raw_input("Save as (example.json): ")
+    with open(path, 'w') as fobj:
+        json.dump(northeastern, fobj, indent=4, sort_keys=True)
 
 
 ####################################
@@ -180,6 +152,99 @@ def get_semester_choice():
 
 
 ####################################
+# Department Selection             #
+####################################
+
+def get_department_options(term_id):
+    """
+        Gets all the available departments
+    """
+    params = DEPARTMENT_OPTIONS_PARAMS.copy()
+    params['cat_term_in'] = term_id
+    url = DEPARTMENT_OPTIONS_URL + '?' + urllib.urlencode(params)
+    dom = get_dom(url)
+    select = dom.cssselect('select[name="sel_subj"]')[0]
+    return get_options(select)
+
+
+def get_department_choices(term_id):
+    """
+        Out of the available departments, gets the user's choice
+    """
+    departments = get_department_options(term_id)
+    print "(0) All"
+    # for index, d in enumerate(departments):
+    #   print "(%d) %s" % (index+1, d["name"])
+
+    choice = raw_input("\nChoice: ")
+    try:
+        if int(choice) == 0:
+            return departments
+        else:
+            print "Choosing individual departments is not currently supported.\n"
+            get_department_choices(term_id)
+    except ValueError:
+        print "Please enter a number.\n"
+        get_department_choices(term_id)
+
+
+def thread_departments(departments, term_id, threadcount=10):
+    """
+        Thread the course fetching for departments
+    """
+    dlock = threading.Lock()
+
+    depts = itertools.tee(departments, 1)[0]
+    fetched = []
+    errors = []
+    def threadfunc():
+        """
+            Runs inside of the threads. Gets information for departments in
+            a loop and returns when no deparments remain in the queue
+        """
+        while True:
+            try:
+                dlock.acquire()
+                try:
+                    dept = depts.next()
+                    print 'Getting: %s' % dept['name']
+                except StopIteration:
+                    return
+                finally:
+                    dlock.release()
+                info = get_courses_for_department(dept['value'], term_id)
+                data = {
+                    "name": dept['name'],
+                    "abbreviation": dept['value'],
+                    "courses": info
+                }
+                fetched.append(data)
+            except Exception, err:
+                errors.append((err, traceback.format_exc()))
+                return
+    threads = [threading.Thread(target=threadfunc) for i in xrange(threadcount)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    if errors:
+        errstr = '\n'.join('%s\n%s' % pair for pair in errors)
+        raise Exception('Errors occurred fetching data:\n%s' % errstr)
+
+    return fetched
+
+def get_courses_for_department(dept_id, term_id):
+    """
+        Get all of the courses for the given department in the given term
+    """
+    params = REQUIRED_COURSES_PARAMS.copy()
+    params['term_in'] = term_id
+    url = COURSES_URL + '?' + urllib.urlencode(params) + '&sel_subj=' + dept_id
+    dom = get_dom(url)
+    return parse_course_tree(dom)
+
+
+####################################
 # DOM Parsing                      #
 ####################################
 
@@ -193,28 +258,6 @@ def get_dom(url, data=None):
         return lxml.html.parse(response).getroot()
     finally:
         response.close()
-
-
-def get_course_page(department):
-    """
-        Gets the courses list for the given department
-    """
-    params = DEFAULT_COURSES_PARAMS.copy()
-    params["sel_subj"] = department
-    # For some reason, sel_sub is required twice.
-    url = DISPLAY_COURSES_URL + 'sel_subj=dummy&' + urllib.urlencode(params)
-    return get_dom(url)
-
-
-def get_departments():
-    """
-        Returns a list of department strings
-    """
-    # XXX: Do this by scraping.
-    print 'Getting departments (fake)'
-    curdir = os.path.dirname(os.path.abspath(__file__))
-    with open(os.path.join(curdir, 'northeastern_departments.json'), 'r') as fobj:
-        return json.load(fobj)
 
 
 def elems_to_content(elems):
@@ -241,27 +284,25 @@ def get_options(select):
 # Course Information Parsing       #
 ####################################
 
-def get_course_info(dept):
+def parse_course_tree(dom):
     """
-        Takes a department and returns a dictionary mapping course numbers to
-        dicts containing their information
+        Returns a list of courses that have been extracted from the DOM
     """
-    dom = get_course_page(dept)
     titles = elems_to_content(dom.cssselect('td.nttitle'))
     descriptions = dom.cssselect('td.ntdefault')[:len(titles)]
-    course_array = []
+    courses = []
     for title, description in zip(titles, descriptions):
         course_num, title = TITLE_INFO_REGEX.match(title).groups()
         course_num = int(course_num)
         title = title.strip()
-        info = parse_description(description)
-        info['title'] = title
-        info['number'] = course_num
-        course_array.append(info)
-    return course_array
+        course = get_course_info(description)
+        course['title'] = title
+        course['number'] = course_num
+        courses.append(course)
+    return courses
 
 
-def parse_description(description):
+def get_course_info(description):
     """
         Takes a course description and returns a dictionary of all the various
         pieces of information that can be extracted from it
@@ -300,9 +341,9 @@ def get_pieces(description):
     numbers = []
     post_numbers = []
     found_numbers = False
-    for p in pieces:
-        matched = DOUBLE_REGEX.match(p.strip())
-        stripped = p.strip()
+    for piece in pieces:
+        matched = DOUBLE_REGEX.match(piece.strip())
+        stripped = piece.strip()
         if found_numbers:
             if matched != None:
                 numbers.append(stripped)
@@ -370,8 +411,8 @@ def parse_prereqs(prereq_str):
             if "(a)" in pieces[0]:
                 # Ands and Ors, oh dear god why
                 ands = pieces[0].split("and")
-                for a in ands:
-                    ors = [make_prereq_course(o) for o in COURSES_REGEX.findall(a)]
+                for option in ands:
+                    ors = [make_prereq_course(o) for o in COURSES_REGEX.findall(option)]
                     prereqs.append(ors)
             elif " or " in pieces[0]:
                 # ors
@@ -379,8 +420,8 @@ def parse_prereqs(prereq_str):
                 prereqs.append(ors)
             elif " and " in pieces[0]:
                 ands = [[make_prereq_course(a)] for a in COURSES_REGEX.findall(pieces[0])]
-                for a in ands:
-                    prereqs.append(a)
+                for option in ands:
+                    prereqs.append(option)
             elif "concurrently" in pieces[0]:
                 prereqs.append([make_prereq_course(pieces[0], True)])
             else:
