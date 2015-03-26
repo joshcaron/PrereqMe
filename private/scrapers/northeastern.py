@@ -17,7 +17,7 @@ import lxml.html
 
 
 # Regex for extracting course number from title
-TITLE_INFO_REGEX = re.compile('.*([0-9]{4}).*-(.*)')
+TITLE_INFO_REGEX = re.compile('[\sa-zA-Z]+(\d+)\s?-\s?(.*)')
 # Base URL for the course display page
 DISPLAY_COURSES_URL = 'https://wl11gp.neu.edu/udcprod8/bwckctlg.p_display_courses?'
 # Default parameters for the course display page
@@ -286,6 +286,7 @@ def parse_description(description):
 
     description, prereq, coreq = split_requisites(preNumbers)
     info['description'] = description
+    info['prereqstr'] = prereq
     info['prerequisites'] = parse_prereqs(prereq)
     info['corequisites'] = parse_coreqs(coreq)
 
