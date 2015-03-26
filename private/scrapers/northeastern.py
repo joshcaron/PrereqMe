@@ -47,8 +47,12 @@ COURSES_REGEX = re.compile(r'(\w+ \d+)')
 # URLs and Parameter data          #
 ####################################
 
+# URL used for getting the available semesters
+SEMESTER_OPTIONS_URL = 'https://wl11gp.neu.edu/udcprod8/bwckctlg.p_disp_dyn_ctlg'
+
 # Base URL for the course display page
 DISPLAY_COURSES_URL = 'https://wl11gp.neu.edu/udcprod8/bwckctlg.p_display_courses?'
+
 # Default parameters for the course display page
 DEFAULT_COURSES_PARAMS = {
     "sel_levl": "dummy",
@@ -138,6 +142,44 @@ def get_course_info_by_dept(depts, threadcount=10):
 
 
 ####################################
+# Semester Selection               #
+####################################
+
+def get_semester_options():
+    """
+        Gets all the available semesters, except for CPS and Law
+    """
+    dom = get_dom(SEMESTER_OPTIONS_URL)
+    select = dom.cssselect('select[name="cat_term_in"]')[0]
+    semesters = get_options(select)
+    filtered = []
+    for semester in semesters:
+        name = semester["name"]
+        if "Law" not in name and "CPS" not in name and "None" not in name:
+            filtered.append(semester)
+    return filtered
+
+
+def get_semester_choice():
+    """
+        Out of the available semesters, gets the user's choice
+    """
+    semesters = get_semester_options()
+    for index, semester in enumerate(semesters):
+        print "(%d) %s" % (index+1, semester["name"])
+
+    choice = raw_input("\nChoice: ")
+    try:
+        return semesters[int(choice)-1]
+    except ValueError:
+        print "Please enter a number.\n"
+        get_semester_choice()
+    except IndexError:
+        print "Out of range.\n"
+        get_semester_choice()
+
+
+####################################
 # DOM Parsing                      #
 ####################################
 
@@ -180,6 +222,19 @@ def elems_to_content(elems):
         Takes a list of LXML elements and returns a list of their text content
     """
     return [elem.text_content() for elem in elems]
+
+
+def get_options(select):
+    """
+        Takes an LXML Select element and returns a list of dictionaries with
+        each option's name and value
+    """
+    choices = []
+    for child in select.getchildren():
+        name = child.text.strip()
+        value = child.values()[0]
+        choices.append({"name": name, "value": value})
+    return choices
 
 
 ####################################
@@ -406,7 +461,6 @@ def parse_hours(numbers):
             hours['hourType'] = groups[1].strip()
         else:
             # single
-            # TODO: Move to constant
             split = SPACES_REGEX.split(text, 1)
             count = float(split[0])
             hour_type = split[1].strip()
