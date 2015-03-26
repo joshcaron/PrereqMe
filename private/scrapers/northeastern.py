@@ -192,13 +192,6 @@ def iter_child_textnodes(elem, strip_whitespace=False, remove_empty=False):
         chained_iter = (s for s in chained_iter if s)
     return chained_iter
 
-def splitstrip(text, separator):
-    """
-        Splits text on a separator, then strips white space from the resulting
-        strings and only outputs non-empty strings.
-    """
-    return [t.strip() for t in text.split(separator) if t.strip()]
-
 ####################################
 # Course Information Parsing       #
 ####################################
