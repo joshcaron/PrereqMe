@@ -177,7 +177,7 @@ def get_departments():
 
 def elems_to_content(elems):
     """
-        Takes a list of LXML elements and returns a list of their text content 
+        Takes a list of LXML elements and returns a list of their text content
     """
     return [elem.text_content() for elem in elems]
 
@@ -263,6 +263,11 @@ def get_pieces(description):
 
 
 def split_requisites(description_pieces):
+    """
+        Split up pieces of the description and return a tuple containing the
+        description of the course, the prerequisite string of the course, and
+        the corequisite string of the course
+    """
     desc = " ".join(description_pieces)
     has_prereq = 'Prereq.' in desc
     has_coreq = 'Coreq.' in desc
@@ -295,6 +300,12 @@ def split_requisites(description_pieces):
 
 
 def parse_prereqs(prereq_str):
+    """
+        Given a string that contains prerequisites of a course, return the
+        parsed string as an array of arrays such that in order to fulfill the
+        prerequisites for the course a prerequiste from each array in the
+        returned array should be completed
+    """
     prereqs = []
     pieces = [p.strip() for p in prereq_str.split(";")]
     try:
@@ -332,6 +343,9 @@ def parse_prereqs(prereq_str):
 
 
 def parse_coreqs(coreq_str):
+    """
+        Return the corequisites extracted from the given string
+    """
     coreqs = []
     try:
         coreqs = [make_coreq_course(a) for a in COURSES_REGEX.findall(coreq_str)]
@@ -342,6 +356,10 @@ def parse_coreqs(coreq_str):
 
 
 def make_prereq_course(course_str, concurrent=False):
+    """
+        Return a dictionary of a course that contains the course information and
+        whether or not the prerequiste can be taken concurrently
+    """
     pieces = course_str.split(" ")
     course = {
         "department": pieces[0],
@@ -352,6 +370,9 @@ def make_prereq_course(course_str, concurrent=False):
 
 
 def make_coreq_course(course_str):
+    """
+        Return a dictionary of a course that contains the course information
+    """
     pieces = course_str.split(" ")
     course = {
         "department": pieces[0],
@@ -361,6 +382,9 @@ def make_coreq_course(course_str):
 
 
 def parse_hours(numbers):
+    """
+        Return all the hours information that is found
+    """
     all_hours = []
     for text in numbers:
         hours = {}
@@ -395,6 +419,9 @@ def parse_hours(numbers):
 
 
 def after_hours(post_numbers):
+    """
+        Return a tuple of information that is found found after the course hours
+    """
     levels = []
     schedules = []
     department = ''
