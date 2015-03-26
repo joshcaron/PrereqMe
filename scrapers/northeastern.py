@@ -1,6 +1,6 @@
 #! /usr/bin/python
 """
-    Scrapes Northeastern University course information.
+Scrapes Northeastern University course information.
 """
 
 import json
@@ -95,8 +95,8 @@ NORTHEASTERN_INFO = {
 
 def main():
     """
-        After selecting a semester and department, gather all the course
-        information and save it as json
+    After selecting a semester and department, gather all the course
+    information and save it as json
     """
     print "Getting available semesters:"
     semester = get_semester_choice()
@@ -119,7 +119,7 @@ def main():
 
 def get_semester_options():
     """
-        Gets all the available semesters, except for CPS and Law
+    Gets all the available semesters, except for CPS and Law
     """
     dom = get_dom(SEMESTER_OPTIONS_URL)
     select = dom.cssselect('select[name="cat_term_in"]')[0]
@@ -134,7 +134,7 @@ def get_semester_options():
 
 def get_semester_choice():
     """
-        Out of the available semesters, gets the user's choice
+    Out of the available semesters, gets the user's choice
     """
     semesters = get_semester_options()
     for index, semester in enumerate(semesters):
@@ -157,7 +157,7 @@ def get_semester_choice():
 
 def get_department_options(term_id):
     """
-        Gets all the available departments
+    Gets all the available departments
     """
     params = DEPARTMENT_OPTIONS_PARAMS.copy()
     params['cat_term_in'] = term_id
@@ -169,7 +169,7 @@ def get_department_options(term_id):
 
 def get_department_choices(term_id):
     """
-        Out of the available departments, gets the user's choice
+    Out of the available departments, gets the user's choice
     """
     departments = get_department_options(term_id)
     print "(0) All"
@@ -190,7 +190,7 @@ def get_department_choices(term_id):
 
 def thread_departments(departments, term_id, threadcount=10):
     """
-        Thread the course fetching for departments
+    Thread the course fetching for departments
     """
     dlock = threading.Lock()
 
@@ -199,8 +199,8 @@ def thread_departments(departments, term_id, threadcount=10):
     errors = []
     def threadfunc():
         """
-            Runs inside of the threads. Gets information for departments in
-            a loop and returns when no deparments remain in the queue
+        Runs inside of the threads. Gets information for departments in
+        a loop and returns when no deparments remain in the queue
         """
         while True:
             try:
@@ -235,7 +235,7 @@ def thread_departments(departments, term_id, threadcount=10):
 
 def get_courses_for_department(dept_id, term_id):
     """
-        Get all of the courses for the given department in the given term
+    Get all of the courses for the given department in the given term
     """
     params = REQUIRED_COURSES_PARAMS.copy()
     params['term_in'] = term_id
@@ -250,8 +250,8 @@ def get_courses_for_department(dept_id, term_id):
 
 def get_dom(url, data=None):
     """
-        Performs an HTTP request on the url and returns an LXML DOM of the HTML
-        response.
+    Performs an HTTP request on the url and returns an LXML DOM of the HTML
+    response.
     """
     response = urllib2.urlopen(url, data=data)
     try:
@@ -262,15 +262,15 @@ def get_dom(url, data=None):
 
 def elems_to_content(elems):
     """
-        Takes a list of LXML elements and returns a list of their text content
+    Takes a list of LXML elements and returns a list of their text content
     """
     return [elem.text_content() for elem in elems]
 
 
 def get_options(select):
     """
-        Takes an LXML Select element and returns a list of dictionaries with
-        each option's name and value
+    Takes an LXML Select element and returns a list of dictionaries with
+    each option's name and value
     """
     choices = []
     for child in select.getchildren():
@@ -286,7 +286,7 @@ def get_options(select):
 
 def parse_course_tree(dom):
     """
-        Returns a list of courses that have been extracted from the DOM
+    Returns a list of courses that have been extracted from the DOM
     """
     titles = elems_to_content(dom.cssselect('td.nttitle'))
     descriptions = dom.cssselect('td.ntdefault')[:len(titles)]
@@ -304,8 +304,8 @@ def parse_course_tree(dom):
 
 def get_course_info(description):
     """
-        Takes a course description and returns a dictionary of all the various
-        pieces of information that can be extracted from it
+    Takes a course description and returns a dictionary of all the various
+    pieces of information that can be extracted from it
     """
     info = {}
     pre_numbers, numbers, post_numbers = get_pieces(description)
@@ -330,11 +330,11 @@ def get_course_info(description):
 
 def get_pieces(description):
     """
-        Takes a description of a course and returns a tuple of the various
-        pieces organized as follows:
-            - Before the course hours
-            - The course hours
-            - After the course hours
+    Takes a description of a course and returns a tuple of the various
+    pieces organized as follows:
+        - Before the course hours
+        - The course hours
+        - After the course hours
     """
     pieces = [a.strip() for a in description.itertext() if a.strip() != '']
     pre_numbers = []
@@ -360,9 +360,9 @@ def get_pieces(description):
 
 def split_requisites(description_pieces):
     """
-        Split up pieces of the description and return a tuple containing the
-        description of the course, the prerequisite string of the course, and
-        the corequisite string of the course
+    Split up pieces of the description and return a tuple containing the
+    description of the course, the prerequisite string of the course, and
+    the corequisite string of the course
     """
     desc = " ".join(description_pieces)
     has_prereq = 'Prereq.' in desc
@@ -397,10 +397,10 @@ def split_requisites(description_pieces):
 
 def parse_prereqs(prereq_str):
     """
-        Given a string that contains prerequisites of a course, return the
-        parsed string as an array of arrays such that in order to fulfill the
-        prerequisites for the course a prerequiste from each array in the
-        returned array should be completed
+    Given a string that contains prerequisites of a course, return the
+    parsed string as an array of arrays such that in order to fulfill the
+    prerequisites for the course a prerequiste from each array in the
+    returned array should be completed
     """
     prereqs = []
     pieces = [p.strip() for p in prereq_str.split(";")]
@@ -440,7 +440,7 @@ def parse_prereqs(prereq_str):
 
 def parse_coreqs(coreq_str):
     """
-        Return the corequisites extracted from the given string
+    Return the corequisites extracted from the given string
     """
     coreqs = []
     try:
@@ -453,8 +453,8 @@ def parse_coreqs(coreq_str):
 
 def make_prereq_course(course_str, concurrent=False):
     """
-        Return a dictionary of a course that contains the course information and
-        whether or not the prerequiste can be taken concurrently
+    Return a dictionary of a course that contains the course information and
+    whether or not the prerequiste can be taken concurrently
     """
     pieces = course_str.split(" ")
     course = {
@@ -467,7 +467,7 @@ def make_prereq_course(course_str, concurrent=False):
 
 def make_coreq_course(course_str):
     """
-        Return a dictionary of a course that contains the course information
+    Return a dictionary of a course that contains the course information
     """
     pieces = course_str.split(" ")
     course = {
@@ -479,7 +479,7 @@ def make_coreq_course(course_str):
 
 def parse_hours(numbers):
     """
-        Return all the hours information that is found
+    Return all the hours information that is found
     """
     all_hours = []
     for text in numbers:
@@ -515,7 +515,7 @@ def parse_hours(numbers):
 
 def after_hours(post_numbers):
     """
-        Return a tuple of information that is found found after the course hours
+    Return a tuple of information that is found found after the course hours
     """
     levels = []
     schedules = []
