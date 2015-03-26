@@ -196,39 +196,46 @@ def iter_child_textnodes(elem, strip_whitespace=False, remove_empty=False):
 # Course Information Parsing       #
 ####################################
 
-def parse_hours(numbers):
+def get_course_info(dept):
+    """
+        Takes a department and returns a dictionary mapping course numbers to
+        dicts containing their information
+    """
+    dom = get_course_page(dept)
+    titles = elems_to_content(dom.cssselect('td.nttitle'))
+    descriptions = dom.cssselect('td.ntdefault')[:len(titles)]
+    course_array = []
+    for title, description in zip(titles, descriptions):
+        course_num, title = TITLE_INFO_REGEX.match(title).groups()
+        course_num = int(course_num)
+        title = title.strip()
+        info = parse_description(description)
+        info['title'] = title
+        info['number'] = course_num
+        course_array.append(info)
+    return course_array
 
-    all_hours = []
-    for text in numbers:
-        hours = {}
+def parse_description(description):
+    info = {}
+    pieces = [a.strip() for a in description.itertext() if a.strip() != '']
+    preNumbers, numbers, postNumbers = organize_pieces(pieces)
 
-        if "TO" in text:
-            # range
-            groups = HOURS_TO_REGEX.match(text).groups()
-            hmin, hmax = [c.strip() for c in groups[0].split("TO")]
-            hours['valueType'] = 'range'
-            hours['min'] = hmin
-            hours['max'] = hmax
-            hours['hourType'] = groups[1].strip()
-        elif "OR" in text:
-            # options
-            groups = HOURS_OR_REGEX.match(text).groups()
-            options = [c.strip() for c in groups[0].split("OR")]
-            hours['valueType'] = 'options'
-            hours['options'] = options
-            hours['hourType'] = groups[1].strip()
-        else:
-            # single
-            # TODO: Move to constant
-            split = SPACES_REGEX.split(text, 1)
-            count = float(split[0])
-            hour_type = split[1].strip()
-            hours['valueType'] = 'single'
-            hours['value'] = count
-            hours['hourType'] = hour_type
-        all_hours.append(hours)
+    description, prereq, coreq = split_requisites(preNumbers)
+    info['description'] = description
+    info['prereqstr'] = prereq
+    info['prerequisites'] = parse_prereqs(prereq)
+    info['corequisites'] = parse_coreqs(coreq)
 
-    return all_hours
+    hours = parse_hours(numbers)
+    info['hours'] = hours
+
+    levels, schedules, department, attributes = after_hours(postNumbers)
+    info['levels'] = levels
+    info['schedules'] = schedules
+    info['department'] = department
+    info['attributes'] = attributes
+
+    return info
 
 def organize_pieces(pieces):
     preNumbers = []
@@ -282,41 +289,6 @@ def split_requisites(description_pieces):
 
     return (description, prereq_str, coreq_str)
 
-def after_hours(postNumbers):
-    levels = []
-    schedules = []
-    department = ''
-    attributes = []
-
-    levels = [l.strip() for l in postNumbers[1].split(",")]
-    schedules = [s.strip() for s in postNumbers[3].split(",")]
-    department = postNumbers[4]
-    # Some courses don't have attributes!??!
-    try:
-        attrs = postNumbers[6]
-        attributes = [a.strip() for a in ATTRIBUTES_REGEX.findall(attrs)]
-    except IndexError:
-        pass
-
-    return (levels, schedules, department, attributes)
-
-def make_prereq_course(course_str, concurrent=False):
-    pieces = course_str.split(" ")
-    course = {
-        "department": pieces[0],
-        "number": pieces[1],
-        "concurrent": concurrent
-    }
-    return course
-
-def make_coreq_course(course_str):
-    pieces = course_str.split(" ")
-    course = {
-        "department": pieces[0],
-        "number": pieces[1]
-    }
-    return course
-
 def parse_prereqs(prereq_str):
     prereqs = []
     pieces = [p.strip() for p in prereq_str.split(";")]
@@ -362,46 +334,76 @@ def parse_coreqs(coreq_str):
 
     return coreqs
 
-def parse_description(description):
-    info = {}
-    pieces = [a.strip() for a in description.itertext() if a.strip() != '']
-    preNumbers, numbers, postNumbers = organize_pieces(pieces)
+def make_prereq_course(course_str, concurrent=False):
+    pieces = course_str.split(" ")
+    course = {
+        "department": pieces[0],
+        "number": pieces[1],
+        "concurrent": concurrent
+    }
+    return course
 
-    description, prereq, coreq = split_requisites(preNumbers)
-    info['description'] = description
-    info['prereqstr'] = prereq
-    info['prerequisites'] = parse_prereqs(prereq)
-    info['corequisites'] = parse_coreqs(coreq)
+def make_coreq_course(course_str):
+    pieces = course_str.split(" ")
+    course = {
+        "department": pieces[0],
+        "number": pieces[1]
+    }
+    return course
 
-    hours = parse_hours(numbers)
-    info['hours'] = hours
+def parse_hours(numbers):
 
-    levels, schedules, department, attributes = after_hours(postNumbers)
-    info['levels'] = levels
-    info['schedules'] = schedules
-    info['department'] = department
-    info['attributes'] = attributes
+    all_hours = []
+    for text in numbers:
+        hours = {}
 
-    return info
+        if "TO" in text:
+            # range
+            groups = HOURS_TO_REGEX.match(text).groups()
+            hmin, hmax = [c.strip() for c in groups[0].split("TO")]
+            hours['valueType'] = 'range'
+            hours['min'] = hmin
+            hours['max'] = hmax
+            hours['hourType'] = groups[1].strip()
+        elif "OR" in text:
+            # options
+            groups = HOURS_OR_REGEX.match(text).groups()
+            options = [c.strip() for c in groups[0].split("OR")]
+            hours['valueType'] = 'options'
+            hours['options'] = options
+            hours['hourType'] = groups[1].strip()
+        else:
+            # single
+            # TODO: Move to constant
+            split = SPACES_REGEX.split(text, 1)
+            count = float(split[0])
+            hour_type = split[1].strip()
+            hours['valueType'] = 'single'
+            hours['value'] = count
+            hours['hourType'] = hour_type
+        all_hours.append(hours)
 
-def get_course_info(dept):
-    """
-        Takes a department and returns a dictionary mapping course numbers to
-        dicts containing their information
-    """
-    dom = get_course_page(dept)
-    titles = elems_to_content(dom.cssselect('td.nttitle'))
-    descriptions = dom.cssselect('td.ntdefault')[:len(titles)]
-    course_array = []
-    for title, description in zip(titles, descriptions):
-        course_num, title = TITLE_INFO_REGEX.match(title).groups()
-        course_num = int(course_num)
-        title = title.strip()
-        info = parse_description(description)
-        info['title'] = title
-        info['number'] = course_num
-        course_array.append(info)
-    return course_array
+    return all_hours
+
+def after_hours(postNumbers):
+    levels = []
+    schedules = []
+    department = ''
+    attributes = []
+
+    levels = [l.strip() for l in postNumbers[1].split(",")]
+    schedules = [s.strip() for s in postNumbers[3].split(",")]
+    department = postNumbers[4]
+    # Some courses don't have attributes!??!
+    try:
+        attrs = postNumbers[6]
+        attributes = [a.strip() for a in ATTRIBUTES_REGEX.findall(attrs)]
+    except IndexError:
+        pass
+
+    return (levels, schedules, department, attributes)
+
+
 
 
 
