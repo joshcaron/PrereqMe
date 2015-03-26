@@ -7,12 +7,10 @@ import json
 import itertools
 import os
 import re
-import sys
 import threading
 import traceback
 import urllib
 import urllib2
-
 import lxml.html
 
 ####################################
@@ -20,29 +18,30 @@ import lxml.html
 ####################################
 
 # Extract course number and title
-TITLE_INFO_REGEX = re.compile('[\sa-zA-Z]+(\d+)\s?-\s?(.*)')
+TITLE_INFO_REGEX = re.compile(r'[\sa-zA-Z]+(\d+)\s?-\s?(.*)')
 
 # Extract hour range
-HOURS_TO_REGEX = re.compile('([0-9]+\.[0-9]{3} TO +[0-9]+\.[0-9]{3})(.*)')
+HOURS_TO_REGEX = re.compile(r'([0-9]+\.[0-9]{3} TO +[0-9]+\.[0-9]{3})(.*)')
 
 # Extract hour options
-HOURS_OR_REGEX = re.compile('([0-9]+\.[0-9]{3} OR +[0-9]+\.[0-9]{3})(.*)')
+HOURS_OR_REGEX = re.compile(r'([0-9]+\.[0-9]{3} OR +[0-9]+\.[0-9]{3})(.*)')
 
 # Match one or more spaces
-SPACES_REGEX = re.compile(' +')
+SPACES_REGEX = re.compile(r' +')
 
 # Matches a floating point number that has 3 decimal places
-DOUBLE_REGEX = re.compile("([0-9]+\.[0-9]{3})")
+DOUBLE_REGEX = re.compile(r'([0-9]+\.[0-9]{3})')
 
 # Known attributes that have commas in them
 COMMA_ATTRIBUTES = [
     'UG Col of Arts, Media & Design',
     'GS Col of Arts, Media & Design'
 ]
-ATTRIBUTES_REGEX = re.compile("(" + "|".join(COMMA_ATTRIBUTES) + "|(?:[\w\s-])+)")
+ATTRIBUTES_REGEX = re.compile('(' + '|'.join(COMMA_ATTRIBUTES) + r'|(?:[\w\s-])+)')
 
 # Matches a department string followed by a course number
-COURSES_REGEX = re.compile('(\w+ \d+)')
+COURSES_REGEX = re.compile(r'(\w+ \d+)')
+
 
 ####################################
 # URLs and Parameter data          #
@@ -52,20 +51,21 @@ COURSES_REGEX = re.compile('(\w+ \d+)')
 DISPLAY_COURSES_URL = 'https://wl11gp.neu.edu/udcprod8/bwckctlg.p_display_courses?'
 # Default parameters for the course display page
 DEFAULT_COURSES_PARAMS = {
-    "sel_levl": "dummy", 
-    "call_proc_in": "", 
-    "sel_to_cred": "", 
-    "sel_crse_strt": "", 
-    "sel_from_cred": "", 
-    "sel_divs": "dummy", 
-    "sel_schd": "dummy", 
-    "sel_attr": "dummy", 
+    "sel_levl": "dummy",
+    "call_proc_in": "",
+    "sel_to_cred": "",
+    "sel_crse_strt": "",
+    "sel_from_cred": "",
+    "sel_divs": "dummy",
+    "sel_schd": "dummy",
+    "sel_attr": "dummy",
     "term_in": "201530",
-    "sel_coll": "dummy", 
-    "sel_dept": "", 
-    "sel_crse_end": "", 
+    "sel_coll": "dummy",
+    "sel_dept": "",
+    "sel_crse_end": "",
     "sel_title": ""
 }
+
 
 ####################################
 # Main                             #
@@ -100,6 +100,7 @@ def get_course_info_by_dept(depts, threadcount=10):
     }
     depts = itertools.tee(depts, 1)[0]
     errors = []
+
     def threadfunc():
         """
             Runs inside of the threads. Gets information for departments in
@@ -135,6 +136,7 @@ def get_course_info_by_dept(depts, threadcount=10):
         raise Exception('Errors occurred fetching data:\n%s' % errstr)
     return output
 
+
 ####################################
 # DOM Parsing                      #
 ####################################
@@ -150,6 +152,7 @@ def get_dom(url, data=None):
     finally:
         response.close()
 
+
 def get_course_page(department):
     """
         Gets the courses list for the given department
@@ -159,6 +162,7 @@ def get_course_page(department):
     # For some reason, sel_sub is required twice.
     url = DISPLAY_COURSES_URL + 'sel_subj=dummy&' + urllib.urlencode(params)
     return get_dom(url)
+
 
 def get_departments():
     """
@@ -170,11 +174,13 @@ def get_departments():
     with open(os.path.join(curdir, 'northeastern_departments.json'), 'r') as fobj:
         return json.load(fobj)
 
+
 def elems_to_content(elems):
     """
         Takes a list of LXML elements and returns a list of their text content 
     """
     return [elem.text_content() for elem in elems]
+
 
 ####################################
 # Course Information Parsing       #
@@ -199,15 +205,16 @@ def get_course_info(dept):
         course_array.append(info)
     return course_array
 
+
 def parse_description(description):
     """
         Takes a course description and returns a dictionary of all the various
         pieces of information that can be extracted from it
     """
     info = {}
-    preNumbers, numbers, postNumbers = get_pieces(description)
+    pre_numbers, numbers, post_numbers = get_pieces(description)
 
-    description, prereq, coreq = split_requisites(preNumbers)
+    description, prereq, coreq = split_requisites(pre_numbers)
     info['description'] = description
     info['prereqstr'] = prereq
     info['prerequisites'] = parse_prereqs(prereq)
@@ -216,13 +223,14 @@ def parse_description(description):
     hours = parse_hours(numbers)
     info['hours'] = hours
 
-    levels, schedules, department, attributes = after_hours(postNumbers)
+    levels, schedules, department, attributes = after_hours(post_numbers)
     info['levels'] = levels
     info['schedules'] = schedules
     info['department'] = department
     info['attributes'] = attributes
 
     return info
+
 
 def get_pieces(description):
     """
@@ -233,46 +241,47 @@ def get_pieces(description):
             - After the course hours
     """
     pieces = [a.strip() for a in description.itertext() if a.strip() != '']
-    preNumbers = []
+    pre_numbers = []
     numbers = []
-    postNumbers = []
-    foundNumbers = False
+    post_numbers = []
+    found_numbers = False
     for p in pieces:
         matched = DOUBLE_REGEX.match(p.strip())
         stripped = p.strip()
-        if foundNumbers:
+        if found_numbers:
             if matched != None:
                 numbers.append(stripped)
             else:
-                postNumbers.append(stripped)
+                post_numbers.append(stripped)
         elif matched != None:
-            foundNumbers = True
+            found_numbers = True
             numbers.append(stripped)
         else:
-            preNumbers.append(stripped)
+            pre_numbers.append(stripped)
 
-    return (preNumbers, numbers, postNumbers)
+    return (pre_numbers, numbers, post_numbers)
+
 
 def split_requisites(description_pieces):
     desc = " ".join(description_pieces)
-    hasPrereq = 'Prereq.' in desc
-    hasCoreq = 'Coreq.' in desc
+    has_prereq = 'Prereq.' in desc
+    has_coreq = 'Coreq.' in desc
     description = ''
     prereq_str = ''
     coreq_str = ''
 
-    if hasPrereq and hasCoreq:
+    if has_prereq and has_coreq:
         desc_pieces = [r.strip() for r in desc.split('Prereq.') if r.strip() != '']
         description = desc_pieces[0]
         reqs = [r.strip() for r in desc_pieces[1].split('Coreq.') if r.strip() != '']
         prereq_str = reqs[0]
         coreq_str = reqs[1]
-    elif hasPrereq:
+    elif has_prereq:
         desc_pieces = [r.strip() for r in desc.split('Prereq.') if r.strip() != '']
         description = desc_pieces[0]
         prereq_str = desc_pieces[1]
         coreq_str = ''
-    elif hasCoreq:
+    elif has_coreq:
         desc_pieces = [r.strip() for r in desc.split('Coreq.') if r.strip() != '']
         description = desc_pieces[0]
         prereq_str = ''
@@ -283,6 +292,7 @@ def split_requisites(description_pieces):
         coreq_str = ''
 
     return (description, prereq_str, coreq_str)
+
 
 def parse_prereqs(prereq_str):
     prereqs = []
@@ -320,6 +330,7 @@ def parse_prereqs(prereq_str):
 
     return prereqs
 
+
 def parse_coreqs(coreq_str):
     coreqs = []
     try:
@@ -328,6 +339,7 @@ def parse_coreqs(coreq_str):
         pass
 
     return coreqs
+
 
 def make_prereq_course(course_str, concurrent=False):
     pieces = course_str.split(" ")
@@ -338,6 +350,7 @@ def make_prereq_course(course_str, concurrent=False):
     }
     return course
 
+
 def make_coreq_course(course_str):
     pieces = course_str.split(" ")
     course = {
@@ -346,8 +359,8 @@ def make_coreq_course(course_str):
     }
     return course
 
-def parse_hours(numbers):
 
+def parse_hours(numbers):
     all_hours = []
     for text in numbers:
         hours = {}
@@ -380,26 +393,24 @@ def parse_hours(numbers):
 
     return all_hours
 
-def after_hours(postNumbers):
+
+def after_hours(post_numbers):
     levels = []
     schedules = []
     department = ''
     attributes = []
 
-    levels = [l.strip() for l in postNumbers[1].split(",")]
-    schedules = [s.strip() for s in postNumbers[3].split(",")]
-    department = postNumbers[4]
+    levels = [l.strip() for l in post_numbers[1].split(",")]
+    schedules = [s.strip() for s in post_numbers[3].split(",")]
+    department = post_numbers[4]
     # Some courses don't have attributes!??!
     try:
-        attrs = postNumbers[6]
+        attrs = post_numbers[6]
         attributes = [a.strip() for a in ATTRIBUTES_REGEX.findall(attrs)]
     except IndexError:
         pass
 
     return (levels, schedules, department, attributes)
-
-
-
 
 
 if __name__ == '__main__':
