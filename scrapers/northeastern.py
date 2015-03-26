@@ -176,22 +176,6 @@ def elems_to_content(elems):
     """
     return [elem.text_content() for elem in elems]
 
-def iter_child_textnodes(elem, strip_whitespace=False, remove_empty=False):
-    """
-        Returns a generator which produces a list of the text contents of direct
-        child nodes.
-    """
-    # Text nodes found after the first HTML child of this element are stored
-    # in the tail properties of the child elements rather than in the list of
-    # children.
-    tail_iter = (c.tail for c in elem.iterchildren() if c.tail is not None)
-    chained_iter = itertools.chain((elem.text,), tail_iter)
-    if strip_whitespace:
-        chained_iter = (s.strip() for s in chained_iter)
-    if remove_empty:
-        chained_iter = (s for s in chained_iter if s)
-    return chained_iter
-
 ####################################
 # Course Information Parsing       #
 ####################################
