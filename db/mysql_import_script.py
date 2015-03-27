@@ -12,7 +12,7 @@ TABLES['schools'] = '''
 	CREATE TABLE `schools` (
 		`id` int(11) NOT NULL AUTO_INCREMENT,
 		`name` varchar(64) NOT NULL UNIQUE,
-		`slug` varchar(5) NOT NULL UNIQUE,
+		`slug` varchar(32) NOT NULL UNIQUE,
 		PRIMARY KEY (`id`)
 	) ENGINE=InnoDB
 '''
