@@ -1,6 +1,6 @@
 'use strict';
 
-prereqApp.factory('SchoolService', ['$http', '$cookies', '$q', '$routeParams', 'config', function($http, $cookies, $q, $routeParams, config) {
+prereqApp.factory('SchoolService', ['$http', '$q', '$routeParams', 'config', function($http, $q, $routeParams, config) {
 	var school = {
 		// Cache of school objects
 		schools: [],
@@ -56,8 +56,7 @@ prereqApp.factory('SchoolService', ['$http', '$cookies', '$q', '$routeParams', '
 			// Order
 			// 1. Check cache
 			// 2. Check URL
-			// 3. Check Cookie
-			// 4. Nothing
+			// 3. Nothing
 
 			// Create a promise
 			var deffered = $q.defer();
@@ -75,29 +74,6 @@ prereqApp.factory('SchoolService', ['$http', '$cookies', '$q', '$routeParams', '
 					}, function(error, status) {
 						deffered.reject('Failed to get school: ' + status);
 					});
-			} else if ($cookies[config.SCHOOL_COOKIE_ID] !== undefined) {
-				// Load school from cookie
-				var slug = $cookies[config.SCHOOL_COOKIE_ID];
-
-				if (this.schools.length == 0) {
-					this._getSchoolBySlug(slug).then(function(response) {
-						SchoolService.setSavedSchool(response.data, true);
-						deffered.resolve(response.data);
-					}, function(error, status) {
-						deffered.reject('Failed to get school: ' + status);
-					});
-				} else {
-					var found = _.find(SchoolService.schools, function(school) {
-						return school.slug ==
-$cookies[config.SCHOOL_COOKIE_ID];
-					});
-					if (found) {
-						SchoolService.setSavedSchool(found);
-						deffered.resolve(found);
-					} else {
-						deffered.reject('School not found in cached school list.');
-					}
-				}
 			} else {
 				// No school saved
 				deffered.reject('No school saved.');
@@ -106,30 +82,15 @@ $cookies[config.SCHOOL_COOKIE_ID];
 			return deffered.promise;
 		},
 
-		'setSavedSchool': function(school, cookie) {
+		'setSavedSchool': function(school) {
 			if (school !== null && school !== undefined) {
 				this.savedSchool = school;
 				console.log("Setting saved school as " + school.name);
-				if (cookie && ($cookies[config.SCHOOL_COOKIE_ID] != school.id)) {
-					this._setSchoolCookie(school.slug);
-				}
 			}
-			
-			
 		},
 
 		'deleteSavedSchool': function() {
 			this.savedSchool = null;
-			this._deleteSchoolCookie();
-		},
-
-		'_setSchoolCookie': function(slug) {
-			$cookies[config.SCHOOL_COOKIE_ID] = slug;
-			console.log('Set cookie: [' + config.SCHOOL_COOKIE_ID + ' -> ' + slug + ']');
-		},
-
-		'_deleteSchoolCookie': function() {
-			delete $cookies[config.SCHOOL_CONFIG_ID];
 		},
 
 		'_getSchoolBySlug': function(slug) {
