@@ -1,0 +1,17 @@
+How to use PrereqMe
+-------------------
+
+GET /api/
+	Get the status of the API
+GET /api/schools/
+	Get all the schools PrereqMe knows about
+GET /api/schools/<slug>
+	Get the information of a single school
+GET /api/schools/<slug>/departments/
+	Get all the departments a school has
+GET /api/schools/<slug>/departments/<abbreviation>
+	Get the information of a single department
+GET /api/schools/<slug>/departments/<abbreviation>/courses/
+	Get all the courses in a department
+GET /api/schools/<slug>/departments/<abbreviation>/courses/<number>
+	Get the information of a single course

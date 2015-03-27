@@ -1,6 +1,3 @@
-[submodule "api"]
-	path = api
-	url = https://github.com/joshcaron/PrereqMe-API.git
 [submodule "db"]
 	path = db
 	url = https://github.com/joshcaron/PrereqMe-Scrapers.git
