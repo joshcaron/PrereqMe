@@ -1,6 +1,6 @@
 'use strict';
 
-prereqApp.factory('DepartmentService', ['$http', '$cookies', '$q', '$rootScope', function($http, $cookies, $q, $rootScope) {
+prereqApp.factory('DepartmentService', ['$http', '$cookies', '$q', 'config', function($http, $cookies, $q, config) {
 	var department = {
 		// Stored departments by school
 		stored: {},
@@ -52,11 +52,11 @@ prereqApp.factory('DepartmentService', ['$http', '$cookies', '$q', '$rootScope',
 
 		'_getDepartmentList': function(slug) {
 			console.log("Getting departments");
-			return $http.get($rootScope.constants.API_BASE_URL + '/schools/' + slug + '/departments');
+			return $http.get(config.API_URL + '/schools/' + slug + '/departments');
 		},
 
 		'_getDepartmentByAbbv': function(slug, abbv) {
-			return $http.get($rootScope.constants.API_BASE_URL + '/schools/' + slug + '/departments/' + abbv);
+			return $http.get(config.API_URL + '/schools/' + slug + '/departments/' + abbv);
 		}
 
 	};

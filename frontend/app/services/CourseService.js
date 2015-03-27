@@ -1,6 +1,6 @@
 'use strict';
 
-prereqApp.factory('CourseService', ['$http', '$cookies', '$q', '$rootScope', function($http, $cookies, $q, $rootScope) {
+prereqApp.factory('CourseService', ['$http', '$cookies', '$q', 'config', function($http, $cookies, $q, config) {
 	var course = {
 		'getAllCourses': function(school, department) {
 			var deffered = $q.defer();
@@ -26,11 +26,11 @@ prereqApp.factory('CourseService', ['$http', '$cookies', '$q', '$rootScope', fun
 		},
 
 		'_getCourseList': function(slug, abbv) {
-			return $http.get($rootScope.constants.API_BASE_URL + '/schools/' + slug + '/departments/' + abbv + '/courses/');
+			return $http.get(config.API_URL + '/schools/' + slug + '/departments/' + abbv + '/courses/');
 		},
 
 		'_getCourse': function(slug, abbv, number) {
-			return $http.get($rootScope.constants.API_BASE_URL + '/schools/' + slug + '/departments/' + abbv + '/courses/' + number);
+			return $http.get(config.API_URL + '/schools/' + slug + '/departments/' + abbv + '/courses/' + number);
 		}
 	};
 	return course;

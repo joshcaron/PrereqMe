@@ -1,6 +1,6 @@
 'use strict';
 
-prereqApp.factory('SchoolService', ['$http', '$cookies', '$q', '$rootScope', '$routeParams', function($http, $cookies, $q, $rootScope, $routeParams) {
+prereqApp.factory('SchoolService', ['$http', '$cookies', '$q', '$routeParams', 'config', function($http, $cookies, $q, $routeParams, config) {
 	var school = {
 		// Cache of school objects
 		schools: [],
@@ -75,9 +75,9 @@ prereqApp.factory('SchoolService', ['$http', '$cookies', '$q', '$rootScope', '$r
 					}, function(error, status) {
 						deffered.reject('Failed to get school: ' + status);
 					});
-			} else if ($cookies[$rootScope.constants.SAVED_SCHOOL_COOKIE] !== undefined) {
+			} else if ($cookies[config.SCHOOL_COOKIE_ID] !== undefined) {
 				// Load school from cookie
-				var slug = $cookies[$rootScope.constants.SAVED_SCHOOL_COOKIE];
+				var slug = $cookies[config.SCHOOL_COOKIE_ID];
 
 				if (this.schools.length == 0) {
 					this._getSchoolBySlug(slug).then(function(response) {
@@ -88,7 +88,8 @@ prereqApp.factory('SchoolService', ['$http', '$cookies', '$q', '$rootScope', '$r
 					});
 				} else {
 					var found = _.find(SchoolService.schools, function(school) {
-						return school.slug == $cookies[$rootScope.constants.SAVED_SCHOOL_COOKIE];
+						return school.slug ==
+$cookies[config.SCHOOL_COOKIE_ID];
 					});
 					if (found) {
 						SchoolService.setSavedSchool(found);
@@ -109,7 +110,7 @@ prereqApp.factory('SchoolService', ['$http', '$cookies', '$q', '$rootScope', '$r
 			if (school !== null && school !== undefined) {
 				this.savedSchool = school;
 				console.log("Setting saved school as " + school.name);
-				if (cookie && ($cookies[$rootScope.constants.SAVED_SCHOOL_COOKIE] != school.id)) {
+				if (cookie && ($cookies[config.SCHOOL_COOKIE_ID] != school.id)) {
 					this._setSchoolCookie(school.slug);
 				}
 			}
@@ -123,20 +124,20 @@ prereqApp.factory('SchoolService', ['$http', '$cookies', '$q', '$rootScope', '$r
 		},
 
 		'_setSchoolCookie': function(slug) {
-			$cookies[$rootScope.constants.SAVED_SCHOOL_COOKIE] = slug;
-			console.log('Set cookie: [' + $rootScope.constants.SAVED_SCHOOL_COOKIE + ' -> ' + slug + ']');
+			$cookies[config.SCHOOL_COOKIE_ID] = slug;
+			console.log('Set cookie: [' + config.SCHOOL_COOKIE_ID + ' -> ' + slug + ']');
 		},
 
 		'_deleteSchoolCookie': function() {
-			delete $cookies[$rootScope.constants.SAVED_SCHOOL_COOKIE];
+			delete $cookies[config.SCHOOL_CONFIG_ID];
 		},
 
 		'_getSchoolBySlug': function(slug) {
-			return $http.get($rootScope.constants.API_BASE_URL + '/schools/' + slug);
+			return $http.get(config.API_URL + '/schools/' + slug);
 		},
 
 		'_getSchoolList': function() {
-			return $http.get($rootScope.constants.API_BASE_URL + '/schools');
+			return $http.get(config.API_URL + '/schools');
 		},
 
 		'_setSchoolList': function(schools) {

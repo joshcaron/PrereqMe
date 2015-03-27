@@ -32,14 +32,3 @@ prereqApp.config(['$routeProvider', '$locationProvider', function($routeProvider
 
 }]);
 
-
-prereqApp.run(['$rootScope', function($rootScope) {
-	var constants = {
-		// API Base URL
-		API_BASE_URL: 'http://api.prereq.me',
-
-		// Cookie identifier for getting the saved school id
-		SAVED_SCHOOL_COOKIE: 'savedSchoolId'
-	};
-	$rootScope.constants = constants;
-}]);
